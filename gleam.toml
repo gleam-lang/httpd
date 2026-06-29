@@ -1,0 +1,24 @@
+name = "gleam_httpd"
+version = "1.0.0"
+
+licences = ["Apache-2.0"]
+description = "Gleam bindings to Erlang's built in HTTP server, httpd"
+
+repository = { type = "github", user = "gleam-lang", repo = "httpd" }
+links = [
+  { title = "Website", href = "https://gleam.run" },
+  { title = "Sponsor", href = "https://github.com/sponsors/lpil" },
+]
+
+[erlang]
+extra_applications = ["inets", "ssl"]
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+gleam_http = ">= 3.0.0 and < 5.0.0"
+gleam_erlang = ">= 1.0.0 and < 2.0.0"
+gleam_otp = ">= 1.0.0 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+gleam_httpc = ">= 5.0.0 and < 6.0.0"
