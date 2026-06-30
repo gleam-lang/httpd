@@ -188,3 +188,28 @@ Message URI unreasonably long.
 
   process.send_exit(pid)
 }
+
+pub fn document_root_is_not_served_test() {
+  let assert Ok(actor.Started(pid:, ..)) =
+    fn(_) {
+      response.new(200)
+      |> response.set_body(bytes_tree.from_string("ok"))
+    }
+    |> httpd.new
+    |> httpd.port(6482)
+    |> httpd.start()
+
+  [
+    "gleam.toml",
+    "README.md",
+    "test/gleam_httpd_test.gleam",
+  ]
+  |> list.each(fn(file) {
+    let assert Ok(request) = request.to("http://127.0.0.1:6482/" <> file)
+    let assert Ok(response) = httpc.send(request)
+    assert response.status == 200
+    assert response.body == "ok"
+  })
+
+  process.send_exit(pid)
+}
