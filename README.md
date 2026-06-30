@@ -32,3 +32,12 @@ pub fn start() -> _ {
 ```
 
 Further documentation can be found at <https://gleam-httpd.hexdocs.pm/>.
+
+## When should you use this?
+
+`httpd` is a HTTP1.1 server that is included with the standard Erlang
+distribution. If you don't need web sockets, server sent events, request body
+streaming, or higher HTTP versions then `httpd` could be a great choice! 
+
+If you need more than `httpd` offers then there are more sophisticated BEAM
+HTTP servers that you can add as a dependency and use, such as Ewe and Mist.
