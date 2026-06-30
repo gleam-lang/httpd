@@ -26,6 +26,7 @@ pub opaque type Configuration {
     max_uri_size: Int,
     minimum_bytes_per_second: option.Option(Int),
     handler: fn(Request(BitArray)) -> Response(BytesTree),
+    after_start: option.Option(fn() -> Nil),
   )
 }
 
@@ -48,6 +49,7 @@ pub fn new(
     max_header_size: 10_000,
     max_uri_size: 8000,
     minimum_bytes_per_second: option.None,
+    after_start: option.None,
   )
 }
 
@@ -179,6 +181,18 @@ pub fn minimum_bytes_per_second(
   Configuration(..config, minimum_bytes_per_second: option.Some(limit))
 }
 
+/// Sets a function to be called after the server successfully starts.
+///
+/// If not set then the default behaviour is to emit an `INFO` level log
+/// with the text "httpd listening on scheme://host:port".
+///
+pub fn after_start(
+  config: Configuration,
+  callback: fn() -> Nil,
+) -> Configuration {
+  Configuration(..config, after_start: option.Some(callback))
+}
+
 /// Start the httpd server.
 ///
 /// You should add this to your supervision tree.
@@ -191,7 +205,7 @@ pub fn start(config: Configuration) -> StartResult(Nil) {
     }
   }
 
-  let config =
+  let options =
     [
       ServerRoot("./"),
       DocumentRoot("./"),
@@ -210,10 +224,35 @@ pub fn start(config: Configuration) -> StartResult(Nil) {
       GleamHttpdHandler(fn(request) { config.handler(convert_request(request)) }),
     ]
     |> optionally_add(MinimumBytesPerSecond, config.minimum_bytes_per_second)
-  case start_httpd(Httpd, config, StandAlone) {
-    Ok(pid) -> Ok(actor.Started(pid:, data: Nil))
-    Error(error) -> Error(actor.InitExited(process.Abnormal(error)))
+
+  use pid <- result.try(
+    start_httpd(Httpd, options, StandAlone)
+    |> result.map_error(process.Abnormal)
+    |> result.map_error(actor.InitExited),
+  )
+
+  case config.after_start {
+    option.Some(callback) -> callback()
+    option.None -> {
+      log("httpd listening on " <> address_uri(config))
+      Nil
+    }
   }
+
+  Ok(actor.Started(pid:, data: Nil))
+}
+
+fn address_uri(config: Configuration) -> String {
+  let bracketed_ipv6 =
+    string.starts_with(config.bind, "[") && string.ends_with(config.bind, "]")
+  let ipv6 = string.contains(config.bind, ":")
+
+  let host = case bracketed_ipv6 || !ipv6 {
+    True -> config.bind
+    False -> "[" <> config.bind <> "]"
+  }
+
+  "http://" <> host <> ":" <> int.to_string(config.port)
 }
 
 fn convert_request(request: HttpdRequest) -> Request(BitArray) {
@@ -314,3 +353,8 @@ type IpFamily {
   Inet
   Inet6
 }
+
+@external(erlang, "logger", "info")
+fn log(message: String) -> DoNotLeak
+
+type DoNotLeak
