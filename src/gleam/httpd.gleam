@@ -16,6 +16,7 @@ pub opaque type Configuration {
   Configuration(
     port: Int,
     bind: String,
+    ip_family: IpFamily,
     keep_alive: Bool,
     keep_alive_timeout: Int,
     max_clients: Int,
@@ -38,6 +39,7 @@ pub fn new(
     handler:,
     port: 3000,
     bind: "localhost",
+    ip_family: Inet6,
     keep_alive: True,
     keep_alive_timeout: 150,
     max_clients: 150,
@@ -53,6 +55,46 @@ pub fn new(
 ///
 pub fn port(config: Configuration, port: Int) -> Configuration {
   Configuration(..config, port:)
+}
+
+/// A hostname or IP address to bind to.
+///
+/// If this contains a `:` then IPv6 will be used. If it contains a `.` then
+/// IPv4 will be used. If it contains neither than the configured IP family
+/// will not be changed, with the default being IPv6.
+///
+/// Defaults to `localhost`.
+///
+pub fn bind(config: Configuration, interface: String) -> Configuration {
+  let config = Configuration(..config, bind: interface)
+  case detect_ip_family(interface) {
+    option.Some(ip_family) -> Configuration(..config, ip_family:)
+    option.None -> config
+  }
+}
+
+fn detect_ip_family(interface: String) -> option.Option(IpFamily) {
+  case string.contains(interface, ":") {
+    True -> option.Some(Inet6)
+    False ->
+      case string.contains(interface, ".") {
+        True -> option.Some(Inet)
+        False -> option.None
+      }
+  }
+}
+
+/// Use IPv4. If this function and the `bind` function are not called then the
+/// default is IPv6.
+///
+pub fn ipv4(config: Configuration) -> Configuration {
+  Configuration(..config, ip_family: Inet)
+}
+
+/// Use IPv6. This is the default behaviour.
+///
+pub fn ipv6(config: Configuration) -> Configuration {
+  Configuration(..config, ip_family: Inet6)
 }
 
 /// Instructs the server whether to use persistent connections when the client
@@ -163,6 +205,7 @@ pub fn start(config: Configuration) -> StartResult(Nil) {
       MaxUriSize(config.max_uri_size),
       Port(config.port),
       BindAddress(charlist.from_string(config.bind)),
+      IpFamily(config.ip_family),
       Modules([GleamHttpdFfi]),
       GleamHttpdHandler(fn(request) { config.handler(convert_request(request)) }),
     ]
@@ -252,6 +295,7 @@ type HttpdConfiguration {
   MaxHeaderSize(Int)
   MaxUriSize(Int)
   MinimumBytesPerSecond(Int)
+  IpFamily(IpFamily)
 }
 
 type StartMode {
@@ -264,4 +308,9 @@ type ServerTokens {
 
 type HttpdModule {
   GleamHttpdFfi
+}
+
+type IpFamily {
+  Inet
+  Inet6
 }
