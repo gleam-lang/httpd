@@ -91,3 +91,100 @@ pub fn hello_world_test() {
       #("content-type", "application/octet-stream"),
     ]
 }
+
+pub fn max_body_size_test() {
+  let assert Ok(actor.Started(pid:, ..)) =
+    fn(_) {
+      response.new(200)
+      |> response.set_body(bytes_tree.from_string("ok"))
+    }
+    |> httpd.new
+    |> httpd.port(6479)
+    |> httpd.max_body_size(5)
+    |> httpd.start()
+
+  let assert Ok(request) = request.to("http://127.0.0.1:6479/")
+  let request =
+    request
+    |> request.set_method(http.Post)
+    |> request.set_body("123456")
+
+  let assert Ok(response) = httpc.send(request)
+  assert response.status == 413
+  assert response.body == "<HTML>
+       <HEAD>
+           <TITLE>Request Entity Too Large</TITLE>
+      </HEAD>
+      <BODY>
+      <H1>Request Entity Too Large</H1>
+Entity: Body too long
+</BODY>
+      </HTML>
+"
+
+  process.send_exit(pid)
+}
+
+pub fn max_header_size_test() {
+  let assert Ok(actor.Started(pid:, ..)) =
+    fn(_) {
+      response.new(200)
+      |> response.set_body(bytes_tree.from_string("ok"))
+    }
+    |> httpd.new
+    |> httpd.port(6480)
+    |> httpd.max_header_size(80)
+    |> httpd.start()
+
+  let assert Ok(request) = request.to("http://127.0.0.1:6480/")
+  let request =
+    request
+    |> request.prepend_header(
+      "x-too-large",
+      "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+    )
+
+  let assert Ok(response) = httpc.send(request)
+  assert response.status == 413
+  assert response.body == "<HTML>
+       <HEAD>
+           <TITLE>Request Entity Too Large</TITLE>
+      </HEAD>
+      <BODY>
+      <H1>Request Entity Too Large</H1>
+Entity: Headers unreasonably long
+</BODY>
+      </HTML>
+"
+
+  process.send_exit(pid)
+}
+
+pub fn max_uri_size_test() {
+  let assert Ok(actor.Started(pid:, ..)) =
+    fn(_) {
+      response.new(200)
+      |> response.set_body(bytes_tree.from_string("ok"))
+    }
+    |> httpd.new
+    |> httpd.port(6481)
+    |> httpd.max_uri_size(10)
+    |> httpd.start()
+
+  let assert Ok(request) = request.to("http://127.0.0.1:6481/1234567890")
+
+  let assert Ok(response) = httpc.send(request)
+  assert response.status == 414
+  assert response.body == "<HTML>
+       <HEAD>
+           <TITLE>Request-URI Too Large</TITLE>
+      </HEAD>
+      <BODY>
+      <H1>Request-URI Too Large</H1>
+Message URI unreasonably long.
+</BODY>
+      </HTML>
+"
+
+  process.send_exit(pid)
+}
