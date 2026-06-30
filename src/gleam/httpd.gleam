@@ -44,7 +44,7 @@ pub fn new(
     chunked_transfer_encoding: True,
     max_body_size: 2_000_000,
     max_header_size: 10_000,
-    max_uri_size: 8_000,
+    max_uri_size: 8000,
     minimum_bytes_per_second: option.None,
   )
 }
