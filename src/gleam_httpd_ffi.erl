@@ -1,5 +1,5 @@
 -module(gleam_httpd_ffi).
--export([do/1, start/3]).
+-export([do/1]).
 -include_lib("inets/include/httpd.hrl").
 
 -define(handler, gleam_httpd_handler).
@@ -26,14 +26,3 @@ do(#mod{
     ],
     Response = {response, FullHeaders, ResponseBody},
     {break, [{response, Response}]}.
-
-start(BindAddress, Port, Handler) ->
-    Config = [
-        {server_root, "./"},
-        {document_root, "./"},
-        {port, Port},
-        {bind_address, BindAddress},
-        {modules, [?MODULE]},
-        {?handler, Handler}
-    ],
-    inets:start(httpd, Config, stand_alone).

@@ -46,11 +46,11 @@ pub fn hello_world_test() {
     httpc.send(request)
   assert status == 202
   assert body == "Hello, Mike!"
-  assert list.key_set(headers, "date", "")
+  assert headers
+    |> list.key_set("date", "tuesday")
     == [
       #("connection", "close"),
-      #("date", ""),
-      #("server", "inets/9.7"),
+      #("date", "tuesday"),
       #("content-length", "12"),
       #("content-type", "text/html"),
       #("x-unicode", "ð\u{009F}¥³"),
